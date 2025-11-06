@@ -8,14 +8,13 @@ from homeassistant.components.calendar import CalendarEvent
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from custom_components.energyua.const import (
+from .api import EnergyUAApiClientError, PeriodDict
+from .const import (
     LOGGER,
     STATE_NORMAL,
     STATE_OUTAGE,
     TIMEFRAME_TO_CHECK,
 )
-
-from .api import EnergyUAApiClientError, PeriodDict
 
 if TYPE_CHECKING:
     from datetime import date, datetime
