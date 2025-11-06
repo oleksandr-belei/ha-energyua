@@ -1,0 +1,55 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EnergyUA Settings",
+        "data": {
+          "region": "Please select your region:"
+        }
+      },
+      "group": {
+        "title": "EnergyUA Settings",
+        "data": {
+          "group": "Please select your group:"
+        },
+        "data_description": {
+          "group": "You can find your group at: https://energy-ua.info"
+        }
+      }
+    },
+    "error": {
+      "connection": "Unable to connect to the server.",
+      "unknown": "Unknown error occurred."
+    },
+    "abort": {
+      "already_configured": "This entry is already configured."
+    }
+  },
+  "device": {
+    "energyua": {
+      "name": "EnergyUA {region} {group}"
+    }
+  },
+  "entity": {
+    "calendar": {
+      "calendar": {
+        "name": "Outages Calendar"
+      }
+    },
+    "sensor": {
+      "electricity": {
+        "name": "Electricity",
+        "state": {
+          "normal": "Normal",
+          "outage": "Outage"
+        }
+      },
+      "next_outage": {
+        "name": "Next Outage"
+      },
+      "next_restore": {
+        "name": "Next Restore"
+      }
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Налаштування EnergyUA",
+        "data": {
+          "region": "Оберіть свію область:"
+        }
+      },
+      "group": {
+        "title": "Налаштування EnergyUA",
+        "data": {
+          "group": "Оберіть свою чергу:"
+        },
+        "data_description": {
+          "group": "Знайдіть свою чергу на: https://energy-ua.info"
+        }
+      }
+    },
+    "error": {
+      "connection": "Unable to connect to the server.",
+      "unknown": "Unknown error occurred."
+    },
+    "abort": {
+      "already_configured": "Цей запис уже налаштовано."
+    }
+  },
+  "device": {
+    "energyua": {
+      "name": "EnergyUA {region} {group}"
+    }
+  },
+  "entity": {
+    "calendar": {
+      "calendar": {
+        "name": "Графік відключень"
+      }
+    },
+    "sensor": {
+      "electricity": {
+        "name": "Електропостачання",
+        "state": {
+          "normal": "Норма",
+          "outage": "Відключення"
+        }
+      },
+      "next_outage": {
+        "name": "Наступне відключення"
+      },
+      "next_restore": {
+        "name": "Наступне відновлення"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+    "name": "EnergyUA",
+    "country": "UA",
+    "homeassistant": "2025.2.4",
+    "hacs": "2.0.5",
+    "render_readme": true
+}
