@@ -11,8 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
 
-from custom_components.energyua.const import STATE_NORMAL, STATE_OUTAGE
-
+from .const import STATE_NORMAL, STATE_OUTAGE
 from .entity import EnergyUAEntity
 
 if TYPE_CHECKING:
