@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.calendar import CalendarEvent
+from homeassistant.helpers.translation import async_get_translations
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyUAApiClientError, PeriodDict
 from .const import (
+    DOMAIN,
     LOGGER,
     STATE_NORMAL,
     STATE_OUTAGE,
@@ -27,8 +29,10 @@ class EnergyUACoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     config_entry: EnergyUAConfigEntry
+    translations: dict[str, str]
 
     async def _async_setup(self) -> None:
+        await self.async_fetch_translations()
         await self.config_entry.runtime_data.client.fetch_regions()
         await self.config_entry.runtime_data.client.fetch_groups()
 
@@ -38,6 +42,15 @@ class EnergyUACoordinator(DataUpdateCoordinator):
             return await self.config_entry.runtime_data.client.async_get_data()
         except EnergyUAApiClientError as exception:
             raise UpdateFailed(exception) from exception
+
+    async def async_fetch_translations(self) -> None:
+        """Fetch translations."""
+        self.translations = await async_get_translations(
+            self.hass,
+            self.hass.config.language,
+            "common",
+            [DOMAIN],
+        )
 
     @property
     def region_label(self) -> str:
@@ -91,7 +104,9 @@ class EnergyUACoordinator(DataUpdateCoordinator):
         return [self._get_calendar_event(period) for period in periods]
 
     def _get_calendar_event(self, period: PeriodDict) -> CalendarEvent:
-        summary = STATE_OUTAGE.capitalize()
+        summary = self.translations.get(
+            f"component.{DOMAIN}.common.electricity_outage", "Power outage"
+        )
         description = f"{self.region_label} {self.group_label}"
 
         return CalendarEvent(
