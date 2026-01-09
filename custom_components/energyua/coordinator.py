@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.calendar import CalendarEvent
+from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -19,6 +20,7 @@ from .const import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from datetime import datetime
 
     from .data import EnergyUAConfigEntry
@@ -31,7 +33,11 @@ class EnergyUACoordinator(DataUpdateCoordinator):
     config_entry: EnergyUAConfigEntry
     translations: dict[str, str]
 
+    _unsub_next_state_update: Callable[[], None] | None
+
     async def _async_setup(self) -> None:
+        self._unsub_next_state_update = None
+
         await self.async_fetch_translations()
         await self.config_entry.runtime_data.client.fetch_regions()
         await self.config_entry.runtime_data.client.fetch_groups()
@@ -39,9 +45,12 @@ class EnergyUACoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Any:
         """Update data via library."""
         try:
-            return await self.config_entry.runtime_data.client.async_get_data()
+            data = await self.config_entry.runtime_data.client.async_get_data()
         except EnergyUAApiClientError as exception:
             raise UpdateFailed(exception) from exception
+        else:
+            self._schedule_state_update()
+            return data
 
     async def async_fetch_translations(self) -> None:
         """Fetch translations."""
@@ -124,3 +133,44 @@ class EnergyUACoordinator(DataUpdateCoordinator):
 
         key = "end" if restore else "start"
         return min((p[key] for p in periods if p[key] > now), default=None)
+
+    def _schedule_state_update(self) -> None:
+        """Schedule state update at the next outage or restore time."""
+        self._cancel_state_update()
+
+        now = dt_util.now()
+
+        candidates = (self.next_outage, self.next_restore)
+        next_change = min(
+            (dt for dt in candidates if dt and dt > now),
+            default=None,
+        )
+
+        if not next_change:
+            return
+
+        LOGGER.debug("Scheduling state update at %s", next_change)
+
+        self._unsub_next_state_update = async_track_point_in_time(
+            self.hass,
+            self._handle_scheduled_state_update,
+            next_change,
+        )
+
+    def _cancel_state_update(self) -> None:
+        """Cancel any scheduled state update."""
+        if self._unsub_next_state_update:
+            self._unsub_next_state_update()
+            self._unsub_next_state_update = None
+
+    async def _handle_scheduled_state_update(self, _now: datetime) -> None:
+        """Handle state change based on outage schedule."""
+        LOGGER.debug("Current state changed, updating listeners")
+
+        self.async_update_listeners()
+        self._schedule_state_update()
+
+    async def async_shutdown(self) -> None:
+        """Cancel any scheduled updates on shutdown."""
+        self._cancel_state_update()
+        await super().async_shutdown()
