@@ -45,6 +45,10 @@ Integration also provides a calendar view of planned outages. You can add it to 
 
 ![Calendar](https://raw.githubusercontent.com/kihoro2d/ha-energyua/main/media/example_calendar.png)
 
+## Advanced Usage
+
+* [Companion App Widget](examples/widget_template.md) — detailed, color-coded status card for Android home screen.
+
 <!-- References -->
 
 [energyua]: https://energy-ua.info/
