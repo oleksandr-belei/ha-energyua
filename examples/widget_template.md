@@ -22,94 +22,68 @@ Add the following code to your `templates.yaml` file).
     - unique_id: energyua_widget
       name: "EnergyUA Widget"
       icon: mdi:flash-alert
-      # Smart Status: Shows "On until...", "Off until...", or "No outages"
       state: >
-        {% set o_state = states('sensor.energyua_lvivska_grupa_1_1_next_outage') %}
-        {% set r_state = states('sensor.energyua_lvivska_grupa_1_1_next_restore') %}
-
-        {% if o_state == 'unavailable' or r_state == 'unavailable' %}
+        {% set o_raw = states('sensor.energyua_lvivska_grupa_1_1_next_outage') %}
+        {% set r_raw = states('sensor.energyua_lvivska_grupa_1_1_next_restore') %}
+        
+        {% if 'unavailable' in [o_raw, r_raw] %}
           ⚠️ Дані недоступні
-        {% elif o_state == 'unknown' and r_state == 'unknown' %}
+        {% elif o_raw == 'unknown' and r_raw == 'unknown' %}
           ✅ Немає відключень
         {% else %}
-          {% set o = o_state | as_datetime(default=None) %}
-          {% set r = r_state | as_datetime(default=None) %}
-          {% if o %}{% set o = o | as_local %}{% endif %}
-          {% if r %}{% set r = r | as_local %}{% endif %}
-
+          {% set o = o_raw | as_datetime | as_local if o_raw | as_datetime else None %}
+          {% set r = r_raw | as_datetime | as_local if r_raw | as_datetime else None %}
+          
           {% if r and not o %}
-            💡 Відновлення о {{ r.strftime('%H:%M') }}
+              💡 Відновлення о {{ r.strftime('%H:%M') }}
           {% elif o %}
-            🕯️ Відключення о {{ o.strftime('%H:%M') }}
+              🕯️ Відключення о {{ o.strftime('%H:%M') }}
           {% endif %}
         {% endif %}
-
+      
       attributes:
-        # Detailed HTML view for the Android Template Widget
         html_card: >
-          {% set o_state = states('sensor.energyua_lvivska_grupa_1_1_next_outage') %}
-          {% set r_state = states('sensor.energyua_lvivska_grupa_1_1_next_restore') %}
+          {% set o_raw = states('sensor.energyua_lvivska_grupa_1_1_next_outage') %}
+          {% set r_raw = states('sensor.energyua_lvivska_grupa_1_1_next_restore') %}
 
-          {% if o_state == 'unavailable' or r_state == 'unavailable' %}
+          {% if 'unavailable' in [o_raw, r_raw] %}
             ⚠️ Дані недоступні
-          {% elif o_state == 'unknown' and r_state == 'unknown' %}
+          {% elif o_raw == 'unknown' and r_raw == 'unknown' %}
             ✅ Немає запланованих відключень
           {% else %}
-            {% set o = o_state | as_datetime(default=None) %}
-            {% set r = r_state | as_datetime(default=None) %}
-            {% if o %}{% set o = o | as_local %}{% endif %}
-            {% if r %}{% set r = r | as_local %}{% endif %}
+            {# Safe conversion to Local Time #}
+            {% set o = o_raw | as_datetime | as_local if o_raw | as_datetime else None %}
+            {% set r = r_raw | as_datetime | as_local if r_raw | as_datetime else None %}
+            
+            {# --- LOGIC: Determine Timer Mode --- #}
+            {% set t = namespace(label='⏱️ Тривалість:', color='#03a9f4', sec=0) %}
+            
+            {% if o and r and o < r %}
+                {% set t.sec = (r - o).total_seconds() %}
+            {% elif o and o < r %}
+                {% set t.label, t.color = '⏱️ До відключення:', '#ff9800' %}
+                {% set t.sec = (o - now()).total_seconds() %}
+            {% elif r %}
+                {% set t.label, t.color = '⏱️ До відновлення:', '#ffc107' %}
+                {% set t.sec = (r - now()).total_seconds() %}
+            {% endif %}
 
+            {# --- RENDER: HTML Output --- #}
             <p style="text-align:start">
-              🕯️ Відключення:
-              {{ '<font color="#f44336"><b>' ~ o.strftime("%H:%M") ~ '</b></font> ' ~
-                 '<font color="#757575"><b>' ~ o.strftime("%d.%m") ~ '</b></font>'
-                 if o else '<font color="#9e9e9e"><b>Невідомо</b></font>' }}
+              🕯️ Відключення: 
+              {% if o %} <font color="#f44336"><b>{{ o.strftime('%H:%M') }}</b></font> <font color="#757575"><b>{{ o.strftime('%d.%m') }}</b></font>
+              {% else %} <font color="#9e9e9e"><b>Невідомо</b></font> {% endif %}
               <br>
-
-              💡 Відновлення:
-              {{ '<font color="#4caf50"><b>' ~ r.strftime("%H:%M") ~ '</b></font> ' ~
-                 '<font color="#757575"><b>' ~ r.strftime("%d.%m") ~ '</b></font>'
-                 if r else '<font color="#9e9e9e"><b>Невідомо</b></font>' }}
+              💡 Відновлення: 
+              {% if r %} <font color="#4caf50"><b>{{ r.strftime('%H:%M') }}</b></font> <font color="#757575"><b>{{ r.strftime('%d.%m') }}</b></font>
+              {% else %} <font color="#9e9e9e"><b>Невідомо</b></font> {% endif %}
               <br>
-
-              {% if not o and not r %}
-                ⏱️ Тривалість: — —
-              {% elif o and r %}
-                {% set d = r - o %}
-                {% set secs = d.total_seconds() %}
-                ⏱️ Тривалість:
-                {{ '<font color="#03a9f4"><b>' ~
-                   (secs // 3600) | int ~ ':' ~
-                   ('%02d' | format((secs % 3600) // 60)) ~
-                   '</b></font>' }}
-              {% elif o %}
-                {% set d = o - now() %}
-                {% if d.total_seconds() > 0 %}
-                  {% set secs = d.total_seconds() %}
-                  ⏱️ До відключення:
-                  {{ '<font color="#ff9800"><b>' ~
-                     (secs // 3600) | int ~ ':' ~
-                     ('%02d' | format((secs % 3600) // 60)) ~
-                     '</b></font>' }}
-                {% else %}
-                  ⏱️ До відключення: —
-                {% endif %}
-              {% elif r %}
-                {% set d = r - now() %}
-                {% if d.total_seconds() > 0 %}
-                  {% set secs = d.total_seconds() %}
-                  ⏱️ До відновлення:
-                  {{ '<font color="#ffc107"><b>' ~
-                     (secs // 3600) | int ~ ':' ~
-                     ('%02d' | format((secs % 3600) // 60)) ~
-                     '</b></font>' }}
-                {% else %}
-                  ⏱️ До відновлення: —
-                {% endif %}
-              {% endif %}
+              {{ t.label }} 
+              {% if t.sec > 0 %}
+                <font color="{{ t.color }}"><b>{{ (t.sec // 3600)|int }}:{{ '%02d'|format((t.sec % 3600)//60) }}</b></font>
+              {% else %} — {% endif %}
             </p>
-        {% endif %}
+          {% endif %}
 ```
 ## Setup Widget
 1. Add a **Home Assistant Template Widget** to your home screen.
